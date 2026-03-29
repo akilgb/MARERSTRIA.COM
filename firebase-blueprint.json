@@ -1,0 +1,93 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Information about the teacher.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "displayName"]
+    },
+    "School": {
+      "title": "School",
+      "description": "A school where the teacher works.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "color": { "type": "string", "description": "Hex color for the school border" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "color"]
+    },
+    "Course": {
+      "title": "Course",
+      "description": "A subject taught by the teacher.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "schoolId": { "type": "string" },
+        "name": { "type": "string" },
+        "color": { "type": "string", "description": "Hex color for the course/notebook" },
+        "level": { "type": "string", "enum": ["Inicial", "Primaria", "Secundaria"] }
+      },
+      "required": ["userId", "schoolId", "name", "color"]
+    },
+    "Schedule": {
+      "title": "Schedule",
+      "description": "A specific class time slot.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "schoolId": { "type": "string" },
+        "courseId": { "type": "string" },
+        "grade": { "type": "string" },
+        "section": { "type": "string" },
+        "dayOfWeek": { "type": "integer", "description": "0-6 (Sun-Sat)" },
+        "startTime": { "type": "string", "description": "HH:mm" },
+        "endTime": { "type": "string", "description": "HH:mm" }
+      },
+      "required": ["userId", "schoolId", "courseId", "grade", "dayOfWeek", "startTime", "endTime"]
+    },
+    "Holiday": {
+      "title": "Peruvian Holiday",
+      "description": "Official holidays in Peru.",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "format": "date" },
+        "name": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["date", "name"]
+    },
+    "Session": {
+      "title": "Learning Session",
+      "description": "A generated learning session aligned with CNEB.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "schoolId": { "type": "string" },
+        "courseId": { "type": "string" },
+        "scheduleId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "title": { "type": "string" },
+        "activities": { "type": "string" },
+        "isGenerated": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "schoolId", "courseId", "date", "title", "activities"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "User", "description": "Teacher profiles." },
+    "/schools/{schoolId}": { "schema": "School", "description": "Schools managed by the teacher." },
+    "/courses/{courseId}": { "schema": "Course", "description": "Courses taught in schools." },
+    "/schedules/{scheduleId}": { "schema": "Schedule", "description": "Class schedules." },
+    "/holidays/{holidayId}": { "schema": "Holiday", "description": "Global holidays." },
+    "/sessions/{sessionId}": { "schema": "Session", "description": "Learning sessions." }
+  }
+}

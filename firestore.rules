@@ -1,0 +1,257 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId} (matches Auth UID)
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required, email format)
+    //   - displayName: string (required)
+    //   - school: string
+    //   - level: string (Inicial, Primaria, Secundaria)
+    //   - specialty: string
+    //   - grade: string
+    //   - section: string
+    //   - role: string (admin, user)
+    //   - createdAt: timestamp
+    //
+    // Collection: schools
+    // Document ID: {schoolId}
+    // Fields:
+    //   - userId: string (required, matches Auth UID)
+    //   - name: string (required)
+    //   - color: string (required, hex)
+    //   - createdAt: timestamp
+    //
+    // Collection: courses
+    // Document ID: {courseId}
+    // Fields:
+    //   - userId: string (required, matches Auth UID)
+    //   - schoolId: string (required)
+    //   - name: string (required)
+    //   - color: string (required, hex)
+    //   - level: string (Inicial, Primaria, Secundaria)
+    //
+    // Collection: schedules
+    // Document ID: {scheduleId}
+    // Fields:
+    //   - userId: string (required, matches Auth UID)
+    //   - schoolId: string (required)
+    //   - courseId: string (required)
+    //   - grade: string (required)
+    //   - section: string
+    //   - dayOfWeek: number (1-7)
+    //   - startTime: string (HH:mm)
+    //   - endTime: string (HH:mm)
+    //
+    // Collection: holidays
+    // Document ID: {holidayId}
+    // Fields:
+    //   - date: string (YYYY-MM-DD)
+    //   - name: string
+    //   - description: string
+    //
+    // Collection: programming_matrices
+    // Document ID: {matrixId}
+    // Fields:
+    //   - userId: string (required, matches Auth UID)
+    //   - year: number (required)
+    //   - content: string (required, JSON string)
+    //   - updatedAt: timestamp
+    //
+    // Collection: sessions
+    // Document ID: {sessionId}
+    // Fields:
+    //   - userId: string (required, matches Auth UID)
+    //   - schoolId: string
+    //   - courseId: string
+    //   - scheduleId: string
+    //   - date: string (YYYY-MM-DD)
+    //   - title: string
+    //   - competencies: list
+    //   - capacities: list
+    //   - performanceCriteria: list
+    //   - activities: string
+    //   - resources: list
+    //   - evaluation: string
+    //   - isGenerated: bool
+    //   - createdAt: timestamp
+    //
+    // Collection: context_documents
+    // Document ID: {docId}
+    // Fields:
+    //   - userId: string (required, matches Auth UID)
+    //   - fileName: string
+    //   - extractedText: string
+    //   - uploadDate: timestamp
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (
+          (request.auth.token.email == "hansolope@gmail.com" && request.auth.token.email_verified == true) ||
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+        );
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDate(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}$");
+    }
+
+    function isValidTime(timeStr) {
+      return timeStr is string && timeStr.matches("^\\d{2}:\\d{2}$");
+    }
+
+    function isValidColor(color) {
+      return color is string && color.matches("^#[0-9a-fA-F]{6}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'displayName']) &&
+             data.uid == request.auth.uid &&
+             isValidEmail(data.email) &&
+             data.displayName is string && data.displayName.size() < 100 &&
+             (!('role' in data) || data.role in ['admin', 'user']) &&
+             (!('level' in data) || data.level in ['Inicial', 'Primaria', 'Secundaria']);
+    }
+
+    function isValidSchool(data) {
+      return data.keys().hasAll(['userId', 'name', 'color']) &&
+             data.userId == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             isValidColor(data.color);
+    }
+
+    function isValidCourse(data) {
+      return data.keys().hasAll(['userId', 'schoolId', 'name', 'color', 'level']) &&
+             data.userId == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             isValidColor(data.color) &&
+             data.level in ['Inicial', 'Primaria', 'Secundaria'];
+    }
+
+    function isValidSchedule(data) {
+      return data.keys().hasAll(['userId', 'schoolId', 'courseId', 'grade', 'dayOfWeek', 'startTime', 'endTime']) &&
+             data.userId == request.auth.uid &&
+             data.grade is string && data.grade.size() > 0 && data.grade.size() < 50 &&
+             data.dayOfWeek is number && data.dayOfWeek >= 1 && data.dayOfWeek <= 7 &&
+             isValidTime(data.startTime) &&
+             isValidTime(data.endTime);
+    }
+
+    function isValidSession(data) {
+      return data.keys().hasAll(['userId', 'date', 'title', 'activities']) &&
+             data.userId == request.auth.uid &&
+             isValidDate(data.date) &&
+             data.title is string && data.title.size() < 200 &&
+             data.activities is string && data.activities.size() < 100000;
+    }
+
+    function isValidMatrix(data) {
+      return data.keys().hasAll(['userId', 'year', 'content']) &&
+             data.userId == request.auth.uid &&
+             data.year is number &&
+             data.content is string && data.content.size() < 200000;
+    }
+
+    function isValidContextDoc(data) {
+      return data.keys().hasAll(['userId', 'fileName', 'extractedText']) &&
+             data.userId == request.auth.uid &&
+             data.fileName is string && data.fileName.size() < 255 &&
+             data.extractedText is string && data.extractedText.size() < 2000000;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (!('role' in request.resource.data) || request.resource.data.role == 'user');
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    match /schools/{schoolId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidSchool(request.resource.data);
+      allow update: if isDocOwner() && isValidSchool(request.resource.data) || isAdmin();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /courses/{courseId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidCourse(request.resource.data);
+      allow update: if isDocOwner() && isValidCourse(request.resource.data) || isAdmin();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /schedules/{scheduleId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidSchedule(request.resource.data);
+      allow update: if isDocOwner() && isValidSchedule(request.resource.data) || isAdmin();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /holidays/{holidayId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /programming_matrices/{matrixId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidMatrix(request.resource.data);
+      allow update: if isDocOwner() && isValidMatrix(request.resource.data) || isAdmin();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /sessions/{sessionId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidSession(request.resource.data);
+      allow update: if isDocOwner() && isValidSession(request.resource.data) || isAdmin();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /context_documents/{docId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidContextDoc(request.resource.data);
+      allow update: if isDocOwner() && isValidContextDoc(request.resource.data) || isAdmin();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
