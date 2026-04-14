@@ -23,6 +23,7 @@ export interface Course {
   userId: string;
   schoolId: string;
   name: string;
+  color?: string; // Legacy support
   colors: string[];
   level: 'Inicial' | 'Primaria' | 'Secundaria';
 }
@@ -46,6 +47,52 @@ export interface Holiday {
   description?: string;
 }
 
+export interface StructuredSessionData {
+  titulo: string;
+  proposito: string;
+  competencia: string;
+  capacidades: string;
+  desempenos: string;
+  criterios: string;
+  evidencia: string;
+  instrumento: string;
+  inicio: string;
+  inicioTiempo: string;
+  desarrollo: string;
+  desarrolloTiempo: string;
+  cierre: string;
+  cierreTiempo: string;
+  recursos?: string;
+  evaluacion?: string;
+}
+
+export interface SessionResource {
+  id: string;
+  type: 'image' | 'exercise_multiple' | 'exercise_match' | 'exercise_fill' | 'exercise_order';
+  title: string;
+  content: string; // JSON string or base64 image
+}
+
+export interface SessionMetadata {
+  dificultadEstimada: string;
+  palabrasClave: string[];
+  competencias: string[];
+  capacidades: string[];
+  herramientasEvaluacionSugeridas: {
+    nombre: string;
+    descripcion: string;
+    tipo: string;
+    recursoId?: 'exercise_multiple' | 'exercise_match' | 'exercise_fill' | 'exercise_order' | 'image' | 'none';
+  }[];
+  materialesSugeridos: {
+    item: string;
+    proposito: string;
+    esDigital: boolean;
+    recursoId?: 'exercise_multiple' | 'exercise_match' | 'exercise_fill' | 'exercise_order' | 'image' | 'none';
+  }[];
+  recomendacionesDocente: string;
+}
+
 export interface LearningSession {
   id: string;
   userId: string;
@@ -61,5 +108,9 @@ export interface LearningSession {
   resources: string[];
   evaluation: string;
   isGenerated: boolean;
+  structuredData?: StructuredSessionData;
+  htmlContent?: string;
+  generatedResources?: SessionResource[];
+  metadata?: SessionMetadata;
   createdAt: any;
 }

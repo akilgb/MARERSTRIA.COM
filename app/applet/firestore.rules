@@ -1,0 +1,70 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: docentes
+    // Document ID: {docenteId} (matches request.auth.uid)
+    // Fields:
+    //   - email: string (required)
+    //   - nombres: string (optional)
+    //   - apellidos: string (optional)
+    //   - dni: string (optional)
+    //
+    // Subcollections under docentes/{docenteId}:
+    //   - colegios
+    //   - alumnos
+    //   - cursos_dictados
+    //   - sesiones_aprendizaje
+    //   - archivos_contexto
+    //   - (and all other entities belonging to the docente)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(docenteId) {
+      return isAuthenticated() && request.auth.uid == docenteId;
+    }
+
+    function isValidString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isValidDocente(data) {
+      return data.keys().hasAll(['email']) &&
+             isValidString(data.email, 3, 100) &&
+             (!('nombres' in data) || isValidString(data.nombres, 0, 100)) &&
+             (!('apellidos' in data) || isValidString(data.apellidos, 0, 100)) &&
+             (!('dni' in data) || isValidString(data.dni, 0, 20));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /docentes/{docenteId} {
+      allow read: if isOwner(docenteId);
+      allow create: if isOwner(docenteId) && isValidDocente(request.resource.data);
+      allow update: if isOwner(docenteId) && isValidDocente(request.resource.data);
+      allow delete: if isOwner(docenteId);
+
+      // Match any subcollection document under the docente
+      match /{subcollection}/{document=**} {
+        // Only the owner of the parent docente document can read/write their subcollections
+        allow read: if isOwner(docenteId);
+        allow create, update, delete: if isOwner(docenteId);
+      }
+    }
+  }
+}

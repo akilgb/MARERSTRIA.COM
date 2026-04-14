@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "Docente": {
+      "title": "Docente",
+      "description": "Perfil del docente, dueño del espacio de trabajo.",
+      "type": "object",
+      "properties": {
+        "dni": { "type": "string" },
+        "nombres": { "type": "string" },
+        "apellidos": { "type": "string" },
+        "email": { "type": "string", "format": "email" }
+      },
+      "required": ["email"]
+    },
+    "Colegio": {
+      "title": "Colegio",
+      "description": "Institución educativa donde labora el docente.",
+      "type": "object",
+      "properties": {
+        "nombre": { "type": "string" },
+        "ubicacion": { "type": "string" },
+        "tipoZona": { "type": "string" },
+        "directorioAutoridades": { "type": "string", "description": "JSON stringified" }
+      },
+      "required": ["nombre"]
+    },
+    "Alumno": {
+      "title": "Alumno",
+      "description": "Estudiante a cargo del docente.",
+      "type": "object",
+      "properties": {
+        "dni": { "type": "string" },
+        "nombres": { "type": "string" },
+        "apellidos": { "type": "string" },
+        "perfilEstilosAprendizajeIA": { "type": "string", "description": "JSON stringified" }
+      },
+      "required": ["nombres", "apellidos"]
+    },
+    "CursoDictado": {
+      "title": "CursoDictado",
+      "description": "Asignación de un curso a una sección en un periodo.",
+      "type": "object",
+      "properties": {
+        "idAsignatura": { "type": "string" },
+        "idSeccion": { "type": "string" },
+        "idPeriodo": { "type": "string" }
+      },
+      "required": ["idAsignatura", "idSeccion", "idPeriodo"]
+    },
+    "SesionAprendizaje": {
+      "title": "SesionAprendizaje",
+      "description": "Sesión de clase generada o editada por el docente/IA.",
+      "type": "object",
+      "properties": {
+        "idUnidad": { "type": "string" },
+        "titulo": { "type": "string" },
+        "fecha": { "type": "string", "format": "date-time" },
+        "blueprintIA": { "type": "string", "description": "JSON stringified" },
+        "contenidoHTML": { "type": "string" }
+      },
+      "required": ["titulo", "fecha"]
+    }
+  },
+  "firestore": {
+    "/docentes/{docenteId}": {
+      "schema": { "$ref": "#/entities/Docente" },
+      "description": "Documento raíz del docente."
+    },
+    "/docentes/{docenteId}/colegios/{colegioId}": {
+      "schema": { "$ref": "#/entities/Colegio" },
+      "description": "Colegios registrados por el docente."
+    },
+    "/docentes/{docenteId}/alumnos/{alumnoId}": {
+      "schema": { "$ref": "#/entities/Alumno" },
+      "description": "Alumnos registrados por el docente."
+    },
+    "/docentes/{docenteId}/cursos_dictados/{cursoId}": {
+      "schema": { "$ref": "#/entities/CursoDictado" },
+      "description": "Cursos dictados por el docente."
+    },
+    "/docentes/{docenteId}/sesiones_aprendizaje/{sesionId}": {
+      "schema": { "$ref": "#/entities/SesionAprendizaje" },
+      "description": "Sesiones de aprendizaje del docente."
+    }
+  }
+}
